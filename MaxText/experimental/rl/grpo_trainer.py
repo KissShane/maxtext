@@ -50,6 +50,7 @@ from cloud_tpu_diagnostics.configuration import stack_trace_configuration
 
 import transformers
 
+import MaxText as mt
 from MaxText import checkpointing
 from MaxText import max_logging
 from MaxText import max_utils
@@ -69,7 +70,18 @@ from MaxText.train import (
     record_scalar_metrics,
     save_checkpoint,
     check_example_batch,
-    setup_mesh_and_model,
+)
+from MaxText.utils.goodput_utils import (
+    GoodputEvent,
+    create_goodput_recorder,
+    maybe_monitor_goodput,
+    maybe_record_goodput,
+)
+from MaxText.utils.goodput_utils import (
+    GoodputEvent,
+    create_goodput_recorder,
+    maybe_monitor_goodput,
+    maybe_record_goodput,
 )
 from MaxText.utils.goodput_utils import (
     GoodputEvent,
@@ -646,7 +658,10 @@ def setup_train_loop(config, recorder):
     state: the initialized train state
   """
   with maybe_record_goodput(recorder, GoodputEvent.TPU_INIT):
-    init_rng, writer, checkpoint_manager, mesh, model, learning_rate_schedule, tx = setup_mesh_and_model(config)
+    model = mt.from_pretrained(config)
+    mesh = model.mesh
+    init_rng, checkpoint_manager, learning_rate_schedule, tx = maxtext_utils.create_training_tools(config, model, mesh)
+
 
   with maybe_record_goodput(recorder, GoodputEvent.TRAINING_PREPARATION):
     data_iterator, eval_data_iterator = grpo_input_pipeline.create_data_iterator(config, mesh)
